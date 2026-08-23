@@ -1,0 +1,15 @@
+name: Public release checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check repository for secrets and private identifiers
+        env:
+          PUBLIC_RELEASE_DENY_PATTERN: ${{ vars.PUBLIC_RELEASE_DENY_PATTERN }}
+        run: scripts/check-public-release.sh

@@ -1,0 +1,39 @@
+{
+    "id": "a17e1a59-8c4b-4d8f-bc0b-44d93c3fce71",
+    "version": "1.0.4",
+    "requiredApiVersion": "1.65.1",
+    "iconFile": "icon.png",
+    "author": {
+        "name": "OpsTracker Contributors",
+        "homepage": "https://example.com",
+        "support": "https://example.com"
+    },
+    "name": "OpsTracker",
+    "nameSlug": "opstracker",
+    "classFile": "OpsTrackerApp.ts",
+    "description": "Lightweight operational tasks integrated with Rocket.Chat.",
+    "permissions": [
+        {
+            "name": "ui.interact"
+        },
+        {
+            "name": "ui.registerButtons"
+        },
+        {
+            "name": "slashcommand"
+        },
+        {
+            "name": "networking"
+        },
+        {
+            "name": "message.read"
+        },
+        {
+            "name": "room.read"
+        },
+        {
+            "name": "user.read"
+        }
+    ],
+    "implements": []
+}

@@ -1,0 +1,12 @@
+{
+  "message_action": "Create task",
+  "composer_action": "Tasks",
+  "room_action": "Tasks",
+  "user_action": "Tasks",
+  "slash_description": "Create an operational task",
+  "slash_params": "[@user] title [priority:high] [due:YYYY-MM-DD]",
+  "backend_url_label": "Task service URL",
+  "backend_url_description": "Public HTTPS URL of OpsTracker, without a trailing slash.",
+  "integration_secret_label": "Integration secret",
+  "integration_secret_description": "Must exactly match ROCKETCHAT_APP_SECRET on the task backend."
+}

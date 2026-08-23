@@ -1,0 +1,12 @@
+{
+  "message_action": "Создать задачу",
+  "composer_action": "Задачи",
+  "room_action": "Задачи",
+  "user_action": "Задачи",
+  "slash_description": "Создать операционную задачу",
+  "slash_params": "[@пользователь] название [priority:high] [due:ГГГГ-ММ-ДД]",
+  "backend_url_label": "URL сервиса задач",
+  "backend_url_description": "Публичный HTTPS URL OpsTracker без завершающего слэша.",
+  "integration_secret_label": "Секрет интеграции",
+  "integration_secret_description": "Должен совпадать с ROCKETCHAT_APP_SECRET в backend задач."
+}
