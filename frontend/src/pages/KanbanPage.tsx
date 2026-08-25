@@ -8,7 +8,7 @@ import { TaskCard } from '../components/TaskCard';
 import { usePaginatedTasks } from '../hooks/usePaginatedTasks';
 import { useTasks } from '../hooks/useTasks';
 import { useStoredState } from '../hooks/useStoredState';
-import type { Tag, Task, TaskStatus, User } from '../types';
+import type { Tag, TaskStatus, TaskSummary, User } from '../types';
 
 const columns: { status: TaskStatus; label: string }[] = [
   { status: 'TODO', label: 'Нужно сделать' }, { status: 'IN_PROGRESS', label: 'В работе' },
@@ -18,7 +18,7 @@ const columns: { status: TaskStatus; label: string }[] = [
 const activeStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'WAITING', 'REVIEW'];
 const donePageSize = 10;
 
-export function KanbanPage({ users, tags, userId, onCreate, onOpen }: { users: User[]; tags: Tag[]; userId: number; onCreate: () => void; onOpen: (task: Task) => void }) {
+export function KanbanPage({ users, tags, userId, onCreate, onOpen }: { users: User[]; tags: Tag[]; userId: number; onCreate: () => void; onOpen: (task: TaskSummary) => void }) {
   const [filters, setFilters] = useStoredState(`filters:kanban:${userId}`, emptyFilters, parseFilterState);
   const deferredSearch = useDeferredValue(filters.search);
   const baseParams = useMemo(() => {
@@ -48,7 +48,7 @@ export function KanbanPage({ users, tags, userId, onCreate, onOpen }: { users: U
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const move = async (event: DragEndEvent) => {
     if (!event.over) return;
-    const task = event.active.data.current?.task as Task | undefined;
+    const task = event.active.data.current?.task as TaskSummary | undefined;
     const target = event.over.id as TaskStatus;
     if (!task || task.status === target) return;
     const beforeActive = active.items;
@@ -76,7 +76,7 @@ export function KanbanPage({ users, tags, userId, onCreate, onOpen }: { users: U
   );
 }
 
-function KanbanColumn({ status, label, tasks, total, loadingMore = false, onLoadMore, onOpen, onCreate }: { status: TaskStatus; label: string; tasks: Task[]; total?: number; loadingMore?: boolean; onLoadMore?: () => void; onOpen: (task: Task) => void; onCreate: () => void }) {
+function KanbanColumn({ status, label, tasks, total, loadingMore = false, onLoadMore, onOpen, onCreate }: { status: TaskStatus; label: string; tasks: TaskSummary[]; total?: number; loadingMore?: boolean; onLoadMore?: () => void; onOpen: (task: TaskSummary) => void; onCreate: () => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const taskTotal = total ?? tasks.length;
   const hasMore = tasks.length < taskTotal;

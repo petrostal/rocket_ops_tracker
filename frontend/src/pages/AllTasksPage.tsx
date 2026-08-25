@@ -6,11 +6,11 @@ import { formatDate } from '../components/TaskCard';
 import { TagList } from '../components/Tags';
 import { useTasks } from '../hooks/useTasks';
 import { useStoredState } from '../hooks/useStoredState';
-import type { Tag, Task, User } from '../types';
+import type { Tag, TaskSummary, User } from '../types';
 
 const status = { TODO: 'Нужно сделать', IN_PROGRESS: 'В работе', WAITING: 'Ожидание', REVIEW: 'Проверка', DONE: 'Готово' } as const;
 
-export function AllTasksPage({ users, tags, userId, onCreate, onOpen }: { users: User[]; tags: Tag[]; userId: number; onCreate: () => void; onOpen: (task: Task) => void }) {
+export function AllTasksPage({ users, tags, userId, onCreate, onOpen }: { users: User[]; tags: Tag[]; userId: number; onCreate: () => void; onOpen: (task: TaskSummary) => void }) {
   const [filters, setFilters] = useStoredState(`filters:all:${userId}`, emptyFilters, parseFilterState);
   const search = useDeferredValue(filters.search);
   const params = useMemo(() => toParams({ ...filters, search }), [filters, search]);

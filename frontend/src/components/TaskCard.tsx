@@ -1,13 +1,13 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CalendarDays, GripVertical, MessageSquare } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import type { Task } from '../types';
+import type { TaskSummary } from '../types';
 import { initials } from './AppShell';
 import { TagList } from './Tags';
 
 const priorityLabels = { LOW: 'Низкий', NORMAL: 'Обычный', HIGH: 'Высокий', CRITICAL: 'Критичный' } as const;
 
-export function TaskCard({ task, onOpen }: { task: Task; onOpen: (task: Task) => void }) {
+export function TaskCard({ task, onOpen }: { task: TaskSummary; onOpen: (task: TaskSummary) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { task } });
   const style: CSSProperties = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {};
   const overdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'DONE';

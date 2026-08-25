@@ -1,4 +1,4 @@
-import type { AccessMode, AccessUser, Tag, Task, TaskDraft, TaskList, TaskStatus, User } from '../types';
+import type { AccessMode, AccessUser, Tag, Task, TaskDraft, TaskList, TaskStatus, TaskSummary, User } from '../types';
 
 export class ApiError extends Error {
   constructor(public status: number, public detail: unknown) {
@@ -46,7 +46,7 @@ export const api = {
   deleteAttachment: (taskId: number, attachmentId: number) => request<Task>(`/api/tasks/${taskId}/attachments/${attachmentId}`, { method: 'DELETE' }),
   action: (id: number, action: 'take' | 'start' | 'wait' | 'review' | 'complete' | 'reopen') => request<Task>(`/api/tasks/${id}/${action}`, { method: 'POST' }),
   deleteTask: (id: number) => request<void>(`/api/tasks/${id}`, { method: 'DELETE' }),
-  moveTask: (task: Task, status: TaskStatus) => {
+  moveTask: (task: TaskSummary, status: TaskStatus) => {
     const action: Record<TaskStatus, 'start' | 'wait' | 'review' | 'complete' | 'reopen'> = {
       TODO: 'reopen', IN_PROGRESS: 'start', WAITING: 'wait', REVIEW: 'review', DONE: 'complete',
     };

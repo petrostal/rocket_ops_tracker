@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
-import type { Task } from '../types';
+import type { TaskSummary } from '../types';
 
 export function useTasks(params: URLSearchParams, enabled = true) {
-  const [items, setItems] = useState<Task[]>([]);
+  const [items, setItems] = useState<TaskSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

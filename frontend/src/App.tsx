@@ -8,7 +8,7 @@ import { AllTasksPage } from './pages/AllTasksPage';
 import { KanbanPage } from './pages/KanbanPage';
 import { MyTasksPage } from './pages/MyTasksPage';
 import { AccessPage } from './pages/AccessPage';
-import type { Tag, Task, User } from './types';
+import type { Tag, Task, TaskSummary, User } from './types';
 
 function mergeTags(catalog: Tag[], incoming: Tag[]): Tag[] {
   const tags = new Map(catalog.map((tag) => [tag.id, tag]));
@@ -60,12 +60,12 @@ export function App() {
   if (authState === 'error' || !user) return <div className="auth-screen"><div className="auth-panel"><h1>Сервис временно недоступен</h1><p>Проверьте соединение и повторите попытку.</p><button className="button primary" onClick={() => window.location.reload()}>Повторить</button></div></div>;
 
   const active = routePath.startsWith('/access') ? 'access' : routePath.startsWith('/my') ? 'my' : routePath.startsWith('/tasks') ? 'all' : 'kanban';
-  const open = (task: Task) => {
+  const open = (task: TaskSummary) => {
     const targetPath = /^\/tasks\/\d+$/.test(routePath) ? '/tasks' : routePath === '/create' ? '/kanban' : routePath;
     const params = new URLSearchParams(routeSearch);
     params.set('task', String(task.id));
     if (embedded) params.set('embedded', '1');
-    setSelected(task);
+    setSelected(null);
     navigate(`${targetPath}?${params}`);
   };
   const closeDrawer = () => {

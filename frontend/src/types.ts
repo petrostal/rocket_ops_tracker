@@ -48,7 +48,7 @@ export interface AccessUser extends User {
   access_tags: Tag[];
 }
 
-export interface Task {
+export interface TaskSummary {
   id: number;
   title: string;
   description: string;
@@ -70,14 +70,17 @@ export interface Task {
   rocket_chat_message_author_username: string | null;
   rocket_chat_message_timestamp: string | null;
   rocket_chat_message_snippet: string | null;
-  events: TaskEvent[];
-  comments: TaskComment[];
-  attachments: TaskAttachment[];
   tags: Tag[];
 }
 
+export interface Task extends TaskSummary {
+  events: TaskEvent[];
+  comments: TaskComment[];
+  attachments: TaskAttachment[];
+}
+
 export interface TaskList {
-  items: Task[];
+  items: TaskSummary[];
   total: number;
   limit: number;
   offset: number;
