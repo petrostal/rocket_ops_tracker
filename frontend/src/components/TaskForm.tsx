@@ -2,6 +2,7 @@ import { CalendarDays, Trash2, UploadCloud, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { Priority, Tag, Task, TaskDraft, User } from '../types';
+import { DescriptionEditor } from './TaskDescription';
 import { TagEditor } from './Tags';
 
 interface Props {
@@ -60,7 +61,7 @@ export function TaskForm({ users, tags, onClose, onCreated, roomId, roomName }: 
         <header><div><h2>Создать задачу</h2></div><button type="button" className="icon-button" onClick={close} aria-label="Закрыть"><X /></button></header>
         <div className="form-body">
           <label className="field"><span>Название</span><input autoFocus required maxLength={500} value={draft.title} onChange={(e) => set('title', e.target.value)} placeholder="Что нужно сделать?" /></label>
-          <label className="field"><span>Описание</span><textarea maxLength={20000} rows={5} value={draft.description} onChange={(e) => set('description', e.target.value)} placeholder="Добавьте важные детали" /></label>
+          <div className="field"><span>Описание</span><DescriptionEditor value={draft.description} onChange={(value) => set('description', value)} rows={5} disabled={saving} placeholder="Добавьте важные детали" /></div>
           <div className="field"><span>Теги</span><TagEditor value={draft.tags} suggestions={tags} onChange={(value) => set('tags', value)} disabled={saving} /></div>
           <div className="field photo-field">
             <span>Фотографии</span>

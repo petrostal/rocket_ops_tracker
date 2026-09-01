@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import type { Priority, Tag, Task, TaskStatus, User } from '../types';
 import { initials } from './AppShell';
 import { CommentBody } from './CommentBody';
+import { DescriptionEditor, TaskDescription, toggleChecklistItem } from './TaskDescription';
 import { TagEditor, TagList } from './Tags';
 
 const statusLabels: Record<TaskStatus, string> = { TODO: 'Нужно сделать', IN_PROGRESS: 'В работе', WAITING: 'Ожидание', REVIEW: 'Проверка', DONE: 'Готово' };
@@ -80,6 +81,10 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
     if (!window.confirm(`Удалить вложение «${name}»?`)) return;
     await apply(() => api.deleteAttachment(task.id, id));
   };
+  const toggleChecklist = async (lineIndex: number, checked: boolean) => {
+    const nextDescription = toggleChecklistItem(task.description, lineIndex, checked);
+    await apply(() => api.updateTask(task.id, { description: nextDescription }));
+  };
   return (
     <div className="drawer-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <aside className="task-drawer" aria-label={`Задача ${task.id}`}>
@@ -102,7 +107,7 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
 
           <section className="drawer-section tags-section"><h3>Теги</h3>{editing ? <TagEditor value={tags} suggestions={availableTags} onChange={setTags} disabled={busy} /> : <TagList tags={task.tags} empty />}</section>
 
-          <section className="drawer-section"><h3>Описание</h3>{editing ? <textarea rows={6} value={description} onChange={(e) => setDescription(e.target.value)} /> : <p className={task.description ? '' : 'muted'}>{task.description || 'Описание не добавлено'}</p>}</section>
+          <section className="drawer-section"><h3>Описание</h3>{editing ? <DescriptionEditor value={description} onChange={setDescription} rows={6} disabled={busy} /> : <TaskDescription value={task.description} disabled={!canEdit || busy} onToggle={(lineIndex, checked) => void toggleChecklist(lineIndex, checked)} />}</section>
 
           {task.rocket_chat_room_id && <section className="drawer-section source-section"><h3><MessageSquare size={18} />Источник: Rocket.Chat</h3><div className="source-card"><div className="source-meta"><span>Комната<strong>#{task.rocket_chat_room_name || task.rocket_chat_room_id}</strong></span><span>Автор<strong>@{task.rocket_chat_message_author_username || 'неизвестен'}</strong></span>{task.rocket_chat_message_timestamp && <span>Сообщение<strong>{formatDateTime(task.rocket_chat_message_timestamp)}</strong></span>}</div>{task.rocket_chat_message_snippet && <blockquote>{task.rocket_chat_message_snippet}</blockquote>}{task.rocket_chat_message_url && <a href={task.rocket_chat_message_url} target="_blank" rel="noreferrer">Открыть сообщение <ExternalLink size={14} /></a>}</div></section>}
 
