@@ -1,7 +1,7 @@
 {
     "id": "a17e1a59-8c4b-4d8f-bc0b-44d93c3fce71",
-    "version": "1.0.4",
-    "requiredApiVersion": "1.65.1",
+    "version": "1.0.5",
+    "requiredApiVersion": "^1.65.1",
     "iconFile": "icon.png",
     "author": {
         "name": "OpsTracker Contributors",
