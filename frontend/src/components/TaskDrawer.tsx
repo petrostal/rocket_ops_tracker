@@ -21,7 +21,7 @@ const eventLabels: Record<string, string> = {
   watchers_changed: 'изменил(а) наблюдателей',
 };
 
-export function TaskDrawer({ task: initial, user, users, availableTags, onClose, onChanged, onDeleted }: { task: Task; user: User; users: User[]; availableTags: Tag[]; onClose: () => void; onChanged: (task: Task) => void; onDeleted: (id: number) => void }) {
+export function TaskDrawer({ task: initial, user, users, availableTags, variant = 'drawer', onClose, onChanged, onDeleted }: { task: Task; user: User; users: User[]; availableTags: Tag[]; variant?: 'drawer' | 'panel'; onClose: () => void; onChanged: (task: Task) => void; onDeleted: (id: number) => void }) {
   const [task, setTask] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(initial.title);
@@ -33,6 +33,8 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
   const [uploading, setUploading] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { setTask(initial); setTitle(initial.title); setDescription(initial.description); setTags(initial.tags.map((tag) => tag.name)); }, [initial]);
   const canEdit = user.is_admin || task.creator.id === user.id || task.assignee?.id === user.id;
   const canAssign = user.is_admin || task.creator.id === user.id;
@@ -51,7 +53,7 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
   const remove = async () => {
     if (!window.confirm(`Удалить задачу #${task.id}?`)) return;
     setBusy(true);
-    try { await api.deleteTask(task.id); onDeleted(task.id); onClose(); }
+    try { await api.deleteTask(task.id); if (mounted.current) { onDeleted(task.id); onClose(); } }
     catch (reason) { setError(reason instanceof ApiError ? reason.message : 'Не удалось удалить задачу'); setBusy(false); }
   };
   const addComment = async () => {
@@ -91,8 +93,8 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
     await apply(() => api.updateTask(task.id, { description: nextDescription }));
   };
   return (
-    <div className="drawer-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <aside className="task-drawer" aria-label={`Задача ${task.id}`}>
+    <div className={variant === 'panel' ? 'task-panel' : 'drawer-backdrop'} onMouseDown={(e) => { if (variant === 'drawer' && e.target === e.currentTarget) onClose(); }}>
+      <aside className={`task-drawer${variant === 'panel' ? ' task-drawer-inline' : ''}`} aria-label={`Задача ${task.id}`}>
         <header className="drawer-header">
           <div><span className="drawer-id">#{task.id}</span>{editing ? <input className="drawer-title-input" value={title} onChange={(e) => setTitle(e.target.value)} /> : <h2>{task.title}</h2>}</div>
           <div className="drawer-head-actions">

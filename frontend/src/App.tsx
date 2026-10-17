@@ -19,6 +19,9 @@ function mergeTags(catalog: Tag[], incoming: Tag[]): Tag[] {
 export function App() {
   const path = useRoute();
   const [routePath, routeSearch = ''] = path.split('?');
+  const directMatch = routePath.match(/^\/tasks\/(\d+)$/);
+  const queryTask = new URLSearchParams(routeSearch).get('task');
+  const taskId = directMatch?.[1] ?? (queryTask && /^\d+$/.test(queryTask) ? queryTask : null);
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -31,9 +34,6 @@ export function App() {
     Promise.all([api.me(), api.users(), api.tags()]).then(([me, allUsers, allTags]) => { setUser(me); setUsers(allUsers); setTags(allTags); setAuthState('ready'); }).catch((error) => setAuthState(error instanceof ApiError && error.status === 401 ? 'unauthenticated' : 'error'));
   }, []);
   useEffect(() => {
-    const directMatch = routePath.match(/^\/tasks\/(\d+)$/);
-    const queryTask = new URLSearchParams(routeSearch).get('task');
-    const taskId = directMatch?.[1] ?? (queryTask && /^\d+$/.test(queryTask) ? queryTask : null);
     let cancelled = false;
     if (taskId && authState === 'ready') {
       void api.task(Number(taskId)).then((task) => {
@@ -47,7 +47,7 @@ export function App() {
         }
         const params = new URLSearchParams(routeSearch);
         params.delete('task');
-        const fallback = directMatch ? '/tasks' : routePath;
+        const fallback = /^\/tasks\/\d+$/.test(routePath) ? '/tasks' : routePath;
         navigate(`${fallback}${params.size ? `?${params}` : ''}`);
       });
     } else if (!taskId) {
@@ -55,7 +55,7 @@ export function App() {
     }
     if (routePath === '/create') setCreating(true);
     return () => { cancelled = true; };
-  }, [routePath, routeSearch, authState]);
+  }, [taskId, routePath, routeSearch, authState]);
   useEffect(() => {
     if (authState === 'ready' && user && routePath.startsWith('/access') && !user.is_admin) navigate('/kanban');
   }, [authState, routePath, user]);
@@ -66,11 +66,11 @@ export function App() {
 
   const active = routePath.startsWith('/access') ? 'access' : routePath.startsWith('/my') ? 'my' : routePath.startsWith('/tasks') ? 'all' : 'kanban';
   const open = (task: TaskSummary) => {
+    if (Number(taskId) === task.id) return;
     const targetPath = /^\/tasks\/\d+$/.test(routePath) ? '/tasks' : routePath === '/create' ? '/kanban' : routePath;
     const params = new URLSearchParams(routeSearch);
     params.set('task', String(task.id));
     if (embedded) params.set('embedded', '1');
-    setSelected(null);
     navigate(`${targetPath}?${params}`);
   };
   const closeDrawer = () => {
@@ -80,10 +80,15 @@ export function App() {
     setSelected(null);
     navigate(`${targetPath}${params.size ? `?${params}` : ''}`);
   };
-  const syncTask = (task: Task) => { setSelected(task); setTags((current) => mergeTags(current, task.tags)); };
+  const syncTask = (task: Task) => {
+    setSelected((current) => current?.id === task.id ? task : current);
+    setTags((current) => mergeTags(current, task.tags));
+  };
+  const currentTask = selected?.id === Number(taskId) ? selected : null;
+  const taskDetail = currentTask ? <TaskDrawer key={currentTask.id} task={currentTask} user={user} users={users} availableTags={tags} variant={active === 'all' ? 'panel' : 'drawer'} onClose={closeDrawer} onChanged={syncTask} onDeleted={() => setSelected(null)} /> : null;
   return <AppShell user={user} active={active} embedded={embedded} onCreate={() => setCreating(true)}>
-    {active === 'access' && user.is_admin ? <AccessPage tags={tags} onUsersSynced={setUsers} /> : active === 'my' ? <MyTasksPage tags={tags} userId={user.id} onCreate={() => setCreating(true)} onOpen={open} /> : active === 'all' ? <AllTasksPage users={users} tags={tags} userId={user.id} onCreate={() => setCreating(true)} onOpen={open} /> : <KanbanPage users={users} tags={tags} userId={user.id} isAdmin={user.is_admin} onCreate={() => setCreating(true)} onOpen={open} />}
+    {active === 'access' && user.is_admin ? <AccessPage tags={tags} onUsersSynced={setUsers} /> : active === 'my' ? <MyTasksPage tags={tags} userId={user.id} onCreate={() => setCreating(true)} onOpen={open} /> : active === 'all' ? <AllTasksPage users={users} tags={tags} userId={user.id} selectedId={taskId ? Number(taskId) : null} selectedTask={currentTask} detail={taskDetail} onCloseTask={closeDrawer} onCreate={() => setCreating(true)} onOpen={open} /> : <KanbanPage users={users} tags={tags} userId={user.id} isAdmin={user.is_admin} onCreate={() => setCreating(true)} onOpen={open} />}
     {creating && <TaskForm users={users} tags={tags} onClose={() => { setCreating(false); if (routePath === '/create') navigate('/kanban'); }} onCreated={(task) => { setCreating(false); syncTask(task); open(task); }} />}
-    {selected && <TaskDrawer task={selected} user={user} users={users} availableTags={tags} onClose={closeDrawer} onChanged={syncTask} onDeleted={() => setSelected(null)} />}
+    {active !== 'all' ? taskDetail : null}
   </AppShell>;
 }
