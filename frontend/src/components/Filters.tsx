@@ -7,11 +7,12 @@ export interface FilterState {
   status: TaskStatus | '';
   priority: Priority | '';
   assignee: string;
+  participation: '' | 'assigned' | 'created' | 'watching';
   overdue: boolean;
   tags: string[];
 }
 
-export const emptyFilters: FilterState = { search: '', status: '', priority: '', assignee: '', overdue: false, tags: [] };
+export const emptyFilters: FilterState = { search: '', status: '', priority: '', assignee: '', participation: '', overdue: false, tags: [] };
 
 const taskStatuses = new Set<TaskStatus>(['TODO', 'IN_PROGRESS', 'WAITING', 'REVIEW', 'DONE']);
 const priorities = new Set<Priority>(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']);
@@ -26,6 +27,7 @@ export function parseFilterState(value: unknown): FilterState | null {
     status,
     priority,
     assignee: typeof item.assignee === 'string' ? item.assignee.slice(0, 64) : '',
+    participation: item.participation === 'assigned' || item.participation === 'created' || item.participation === 'watching' ? item.participation : '',
     overdue: item.overdue === true,
     tags: Array.isArray(item.tags) ? item.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 50) : [],
   };
@@ -36,6 +38,7 @@ export function Filters({ value, users, tags, onChange, compact = false }: { val
   return (
     <div className={`filters ${compact ? 'compact' : ''}`}>
       <label className="search-field"><Search size={18} /><input value={value.search} onChange={(e) => set('search', e.target.value)} placeholder="Поиск задач…" /></label>
+      <label><select aria-label="Моё участие" value={value.participation} onChange={(event) => set('participation', event.target.value as FilterState['participation'])}><option value="">Участие: все доступные</option><option value="assigned">Назначены мне</option><option value="created">Созданы мной</option><option value="watching">Наблюдаю</option></select></label>
       <label><SlidersHorizontal size={16} /><select value={value.assignee} onChange={(e) => set('assignee', e.target.value)}><option value="">Исполнитель: все</option><option value="unassigned">Без исполнителя</option>{users.map((user) => <option key={user.id} value={String(user.id)}>@{user.username}</option>)}</select></label>
       <label><select value={value.priority} onChange={(e) => set('priority', e.target.value as Priority | '')}><option value="">Приоритет: все</option><option value="LOW">Низкий</option><option value="NORMAL">Обычный</option><option value="HIGH">Высокий</option><option value="CRITICAL">Критичный</option></select></label>
       <label><select value={value.status} onChange={(e) => set('status', e.target.value as TaskStatus | '')}><option value="">Статус: все</option><option value="TODO">Нужно сделать</option><option value="IN_PROGRESS">В работе</option><option value="WAITING">Ожидание</option><option value="REVIEW">Проверка</option><option value="DONE">Готово</option></select></label>
@@ -52,6 +55,7 @@ export function toParams(filters: FilterState, extra?: Record<string, string>): 
   if (filters.status) params.set('status', filters.status);
   if (filters.priority) params.set('priority', filters.priority);
   if (filters.assignee) params.set('assignee', filters.assignee);
+  if (filters.participation) params.set('participation', filters.participation);
   if (filters.overdue) params.set('overdue', 'true');
   filters.tags.forEach((tag) => params.append('tag', tag));
   params.set('limit', '500');

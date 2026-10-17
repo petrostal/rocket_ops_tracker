@@ -52,7 +52,7 @@ Authors and administrators can select up to 50 active, eligible watchers when cr
 
 New watchers receive a direct message in Rocket.Chat. Status changes and comments also notify watchers, with one message per recipient per event and comment authors excluded. Notification delivery checks current visibility and active status; disabled/no-access users receive no task content. Notifications use the existing `NOTIFY_CREATOR_UPDATES` switch and never post to shared channels.
 
-The My Tasks view offers Assigned to me, Created by me and Watching filters, intersected with the user's visibility policy. Existing visibility profiles are unchanged by migration. To enable authorship access for a user, an administrator checks “Видеть созданные мной задачи” under Access and saves.
+The My Tasks view offers Assigned to me, Created by me and Watching filters, intersected with the user's visibility policy. The same participation filter is available on the Kanban board and All Tasks; filters persist across reloads. Existing visibility profiles are unchanged by migration. To enable authorship access for a user, an administrator checks “Видеть созданные мной задачи” under Access and saves.
 
 ## Realtime updates
 
