@@ -4,13 +4,16 @@ import time
 from urllib.parse import parse_qs, urlsplit
 
 import jwt
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.auth.tokens import create_session_token, decode_session_token
+from app.auth.tokens import OAUTH_STATE_COOKIE, SESSION_COOKIE, create_session_token, decode_oauth_state, decode_session_token
+from app.api.auth import _safe_destination
 from app.config import get_settings
 from app.models.task import Task
 from app.models.user import User
+from app.integrations.rocketchat.client import RocketChatClient
 from app.services.users import upsert_oauth_user
 
 
@@ -97,6 +100,47 @@ def test_login_reuses_an_existing_task_session(client: TestClient, users: dict[s
     response = client.get("/api/auth/login?next=/kanban", follow_redirects=False)
     assert response.status_code == 307
     assert response.headers["location"] == "/kanban"
+
+
+@pytest.mark.parametrize("destination", [
+    "/tasks/70", "/tasks/70?embedded=1#comments", "/kanban?task=70&embedded=1",
+    "/my?task=70", "/tasks?task=70", "/kanban#board",
+])
+def test_login_preserves_task_destination_for_existing_session(client, users, destination):
+    from tests.conftest import authenticate
+
+    authenticate(client, users["creator"])
+    response = client.get("/api/auth/login", params={"next": destination}, follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == destination
+
+
+@pytest.mark.parametrize("destination", ["/tasks/70", "/tasks/70?embedded=1#comments", "/kanban?task=70&embedded=1", "/my?task=70"])
+def test_oauth_callback_returns_to_original_task(client, users, monkeypatch, destination):
+    response = client.get("/api/auth/login", params={"next": destination}, follow_redirects=False)
+    assert response.status_code == 307
+    state = parse_qs(urlsplit(response.headers["location"]).query)["state"][0]
+    signed_state = client.cookies.get(OAUTH_STATE_COOKIE)
+    assert decode_oauth_state(signed_state, get_settings())["destination"] == destination
+    user = users["creator"]
+    monkeypatch.setattr(RocketChatClient, "exchange_oauth_code", lambda _client, _code: "qa-oauth-access")
+    monkeypatch.setattr(RocketChatClient, "oauth_identity", lambda _client, _token: {
+        "_id": user.rocket_chat_user_id, "username": user.username, "name": user.display_name, "roles": ["user"],
+    })
+    callback = client.get("/api/auth/callback", params={"code": "qa-code", "state": state}, follow_redirects=False)
+    assert callback.status_code == 307
+    assert callback.headers["location"] == destination
+    assert client.cookies.get(SESSION_COOKIE)
+    assert client.get("/api/users/me").json()["id"] == user.id
+
+
+@pytest.mark.parametrize("destination", [
+    "https://other.invalid/tasks/70", "//other.invalid/tasks/70", "/\\other.invalid/tasks/70",
+    "/tasks/70/../../api/auth/logout", "/tasks/not-a-task", "/kanban/other", "/api/auth/logout",
+    "/tasks/70\r\nLocation: https://other.invalid", "/tasks/70\t", "/%2f%2fother.invalid/tasks/70",
+])
+def test_task_return_destination_rejects_unapproved_routes(destination):
+    assert _safe_destination(destination) == "/kanban"
 
 
 def test_integration_nonce_replay_is_rejected(client: TestClient) -> None:

@@ -38,8 +38,13 @@ export function App() {
     if (taskId && authState === 'ready') {
       void api.task(Number(taskId)).then((task) => {
         if (!cancelled) setSelected(task);
-      }).catch(() => {
+      }).catch((error: unknown) => {
         if (cancelled) return;
+        if (error instanceof ApiError && error.status === 401) {
+          setSelected(null);
+          setAuthState('unauthenticated');
+          return;
+        }
         const params = new URLSearchParams(routeSearch);
         params.delete('task');
         const fallback = directMatch ? '/tasks' : routePath;
@@ -56,7 +61,7 @@ export function App() {
   }, [authState, routePath, user]);
 
   if (authState === 'loading') return <div className="auth-screen"><div className="brand-loader" /><p>Загружаем OpsTracker…</p></div>;
-  if (authState === 'unauthenticated') return <div className="auth-screen"><div className="auth-panel"><div className="auth-mark">✓</div><h1>OpsTracker</h1><p>Войдите через рабочий аккаунт Rocket.Chat — отдельный пароль не нужен.</p><a className="button primary large" href={`/api/auth/login?next=${encodeURIComponent(path)}`}>Войти через Rocket.Chat</a></div></div>;
+  if (authState === 'unauthenticated') return <div className="auth-screen"><div className="auth-panel"><div className="auth-mark">✓</div><h1>OpsTracker</h1><p>Войдите через рабочий аккаунт Rocket.Chat — отдельный пароль не нужен.</p><a className="button primary large" href={`/api/auth/login?next=${encodeURIComponent(`${path}${window.location.hash}`)}`}>Войти через Rocket.Chat</a></div></div>;
   if (authState === 'error' || !user) return <div className="auth-screen"><div className="auth-panel"><h1>Сервис временно недоступен</h1><p>Проверьте соединение и повторите попытку.</p><button className="button primary" onClick={() => window.location.reload()}>Повторить</button></div></div>;
 
   const active = routePath.startsWith('/access') ? 'access' : routePath.startsWith('/my') ? 'my' : routePath.startsWith('/tasks') ? 'all' : 'kanban';

@@ -5,6 +5,7 @@ import type { Priority, Tag, Task, TaskDraft, User } from '../types';
 import { DescriptionEditor } from './TaskDescription';
 import { TagEditor } from './Tags';
 import { WatcherEditor } from './WatcherEditor';
+import { WatcherSection } from './WatcherSection';
 
 interface Props {
   users: User[];
@@ -90,7 +91,7 @@ export function TaskForm({ users, tags, onClose, onCreated, roomId, roomName }: 
             <label className="field date-field"><span>Срок</span><CalendarDays size={17} /><input type="date" value={draft.due_date ?? ''} onChange={(e) => set('due_date', e.target.value || null)} /></label>
           </div>
           {(roomName || roomId) && <div className="source-hint">Источник: Rocket.Chat #{roomName || roomId}</div>}
-          <section className="field"><span>Наблюдатели</span><WatcherEditor value={draft.watcher_ids} users={users} onChange={(ids) => set('watcher_ids', ids)} disabled={saving || !!createdTask} /></section>
+          <section className="field"><WatcherSection count={draft.watcher_ids.length}><WatcherEditor value={draft.watcher_ids} users={users} onChange={(ids) => set('watcher_ids', ids)} disabled={saving || !!createdTask} /></WatcherSection></section>
           {error && <p className="form-error" role="alert">{error}</p>}
         </div>
         <footer><button type="button" className="button secondary" onClick={close}>{createdTask ? 'Открыть задачу' : 'Отмена'}</button><button className="button primary" disabled={saving || !draft.title.trim()}>{saving ? (createdTask ? 'Загружаем фото…' : 'Создаём…') : createdTask ? 'Повторить загрузку' : photos.length ? `Создать и загрузить фото (${photos.length})` : 'Создать задачу'}</button></footer>

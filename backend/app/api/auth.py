@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import secrets
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -32,7 +33,17 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 def _safe_destination(value: str) -> str:
     allowed = ("/kanban", "/my", "/tasks", "/create", "/access")
-    return value if any(value == item or value.startswith(f"{item}?") for item in allowed) else "/kanban"
+    if not value.startswith("/") or "\\" in value or any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return "/kanban"
+    try:
+        destination = urlsplit(value)
+    except ValueError:
+        return "/kanban"
+    if destination.scheme or destination.netloc:
+        return "/kanban"
+    if destination.path in allowed or re.fullmatch(r"/tasks/[0-9]+", destination.path):
+        return value
+    return "/kanban"
 
 
 def _set_session(response: Response, user: User, settings: Settings) -> None:

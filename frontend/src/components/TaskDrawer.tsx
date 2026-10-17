@@ -7,6 +7,7 @@ import { CommentBody } from './CommentBody';
 import { DescriptionEditor, TaskDescription, toggleChecklistItem } from './TaskDescription';
 import { TagEditor, TagList } from './Tags';
 import { WatcherEditor } from './WatcherEditor';
+import { WatcherSection } from './WatcherSection';
 
 const statusLabels: Record<TaskStatus, string> = { TODO: 'Нужно сделать', IN_PROGRESS: 'В работе', WAITING: 'Ожидание', REVIEW: 'Проверка', DONE: 'Готово' };
 const eventLabels: Record<string, string> = {
@@ -111,9 +112,9 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
 
           <section className="drawer-section tags-section"><h3>Теги</h3>{editing ? <TagEditor value={tags} suggestions={availableTags} onChange={setTags} disabled={busy} /> : <TagList tags={task.tags} empty />}</section>
 
-          <section className="drawer-section"><h3>Наблюдатели <span className="section-count">{task.watchers.length}</span></h3>
+          <section className="drawer-section"><WatcherSection key={task.id} count={task.watchers.length}>
             {canAssign ? <WatcherEditor value={task.watchers.map((watcher) => watcher.id)} users={[...users, ...task.watchers]} disabled={busy} onChange={(watcher_ids) => void apply(() => api.updateTask(task.id, { watcher_ids }))} /> : <div className="watcher-list">{task.watchers.length ? task.watchers.map((watcher) => <span className="watcher-chip" key={watcher.id}>{watcher.display_name} <small>@{watcher.username}</small></span>) : <p className="muted">Наблюдателей пока нет</p>}</div>}
-          </section>
+          </WatcherSection></section>
 
           <section className="drawer-section"><h3>Описание</h3>{editing ? <DescriptionEditor value={description} onChange={setDescription} rows={6} disabled={busy} /> : <TaskDescription value={task.description} disabled={!canEdit || busy} onToggle={(lineIndex, checked) => void toggleChecklist(lineIndex, checked)} />}</section>
 
