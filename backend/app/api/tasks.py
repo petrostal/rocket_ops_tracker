@@ -14,7 +14,7 @@ from app.models.user import User
 from app.schemas.task import AssignRequest, TaskCommentCreate, TaskCreate, TaskList, TaskRead, TaskSummary, TaskUpdate
 from app.services.attachments import attachment_path, delete_attachment, get_attachment, save_attachment
 from app.services.notifications import notify_assigned, notify_comment, notify_created, notify_status, notify_watchers_added
-from app.services.access import can_view_task
+from app.services.access import can_complete_tasks, can_view_task
 from app.services.tasks import (
     DuplicateSourceTask,
     add_comment,
@@ -233,7 +233,8 @@ def _transition_endpoint(target: TaskStatus):
     ) -> Task:
         task = get_task(db, task_id, user)
         old = task.status
-        result = transition_task(db, task, target, user)
+        destination = TaskStatus.REVIEW if target == TaskStatus.DONE and not can_complete_tasks(user) else target
+        result = transition_task(db, task, destination, user)
         notify_status(result, user, old, settings)
         return result
 

@@ -11,6 +11,10 @@ def allowed_tag_ids(user: User) -> set[int]:
     return {tag.id for tag in user.access_tags}
 
 
+def can_complete_tasks(user: User) -> bool:
+    return user.is_active and (user.is_admin or user.can_complete_tasks)
+
+
 def task_visibility_clause(user: User) -> ColumnElement[bool]:
     if not user.is_active:
         return false()

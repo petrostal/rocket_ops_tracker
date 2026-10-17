@@ -11,7 +11,7 @@ from app.config import Settings
 from app.models.task import Priority, Tag, Task, TaskAttachment, TaskComment, TaskEvent, TaskStatus
 from app.models.user import AccessMode, User
 from app.schemas.task import IntegrationTaskCreate, TaskCommentCreate, TaskCreate, TaskUpdate
-from app.services.access import can_view_task, task_visibility_clause
+from app.services.access import can_complete_tasks, can_view_task, task_visibility_clause
 
 
 LOAD_TASK = (
@@ -197,9 +197,10 @@ def _resolve_watchers(db: Session, ids: list[int]) -> list[User]:
 
 
 def update_task(db: Session, task: Task, data: TaskUpdate, actor: User) -> Task:
-    if not _can_edit(task, actor):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "You cannot edit this task")
     changes = data.model_dump(exclude_unset=True)
+    completion_only = changes == {"status": TaskStatus.DONE} and can_complete_tasks(actor)
+    if not _can_edit(task, actor) and not completion_only:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You cannot edit this task")
     if "watcher_ids" in changes and not (actor.is_admin or task.creator_id == actor.id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the creator or an administrator can manage watchers")
     watchers = _resolve_watchers(db, changes["watcher_ids"]) if "watcher_ids" in changes else None
@@ -268,6 +269,10 @@ def take_task(db: Session, task: Task, actor: User) -> Task:
 
 
 def _check_transition(task: Task, target: TaskStatus, actor: User) -> None:
+    if target == TaskStatus.DONE:
+        if not can_complete_tasks(actor):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет разрешения переводить задачи в «Готово». Отправьте задачу на проверку.")
+        return
     if not (actor.is_admin or task.assignee_id == actor.id or (task.assignee_id is None and task.creator_id == actor.id)):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the assignee can change task status")
     if task.status == TaskStatus.DONE and target != TaskStatus.DONE and not actor.is_admin:

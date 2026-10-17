@@ -39,6 +39,7 @@ export function TaskDrawer({ task: initial, user, users, availableTags, variant 
   const canEdit = user.is_admin || task.creator.id === user.id || task.assignee?.id === user.id;
   const canAssign = user.is_admin || task.creator.id === user.id;
   const canChangeStatus = user.is_admin || task.assignee?.id === user.id || (!task.assignee && task.creator.id === user.id);
+  const canComplete = user.is_admin || user.can_complete_tasks;
   const canTake = !task.assignee && (canAssign || !task.watchers.some((watcher) => watcher.id === user.id));
   const apply = async (operation: () => Promise<Task>) => {
     setBusy(true); setError('');
@@ -105,7 +106,7 @@ export function TaskDrawer({ task: initial, user, users, availableTags, variant 
         </header>
         <div className="drawer-scroll">
           <section className="properties-grid">
-            <label><span>Статус</span><select value={task.status} disabled={!canChangeStatus || busy || (task.status === 'DONE' && !user.is_admin)} onChange={(e) => void apply(() => api.moveTask(task, e.target.value as TaskStatus))}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label><span>Статус</span><select value={task.status} disabled={(!canChangeStatus && !canComplete) || busy || (task.status === 'DONE' && !user.is_admin)} onChange={(e) => void apply(() => api.moveTask(task, e.target.value as TaskStatus))}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={value === 'DONE' ? !canComplete : !canChangeStatus && value !== task.status}>{label}</option>)}</select></label>
             <label><span>Приоритет</span><select value={task.priority} disabled={!user.is_admin || busy} onChange={(e) => void apply(() => api.updateTask(task.id, { priority: e.target.value as Priority }))}><option value="LOW">Низкий</option><option value="NORMAL">Обычный</option><option value="HIGH">Высокий</option><option value="CRITICAL">Критичный</option></select></label>
             <label><span>Исполнитель</span><select value={task.assignee?.id ?? ''} disabled={!canAssign || busy} onChange={(e) => void apply(() => api.updateTask(task.id, { assignee_id: e.target.value ? Number(e.target.value) : null }))}><option value="">Не назначен</option>{users.map((item) => <option key={item.id} value={item.id}>@{item.username}</option>)}</select></label>
             <label className="date-property"><span>Срок</span><CalendarDays size={17} /><input type="date" disabled={!user.is_admin || busy} value={task.due_date?.slice(0, 10) ?? ''} onChange={(e) => void apply(() => api.updateTask(task.id, { due_date: e.target.value ? new Date(`${e.target.value}T23:59:00`).toISOString() : null }))} /></label>
@@ -185,7 +186,8 @@ export function TaskDrawer({ task: initial, user, users, availableTags, variant 
         <footer className="drawer-footer">
           {canTake && <button className="button secondary" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'take'))}><UserPlus size={17} />Взять</button>}
           {canChangeStatus && task.status !== 'IN_PROGRESS' && task.status !== 'DONE' && <button className="button primary" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'start'))}><Play size={17} />Начать</button>}
-          {canChangeStatus && task.status !== 'DONE' && <button className="button success" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'complete'))}><Check size={18} />Завершить</button>}
+          {!canComplete && canChangeStatus && task.status === 'REVIEW' ? <span className="review-pending">Ожидает проверки</span> : null}
+          {task.status !== 'DONE' && (canComplete || (canChangeStatus && task.status !== 'REVIEW')) && <button className="button success" disabled={busy} title={canComplete ? 'Перевести в «Готово»' : 'Отправить на проверку'} onClick={() => void apply(() => api.action(task.id, 'complete'))}><Check size={18} />Завершить</button>}
           {task.status === 'DONE' && user.is_admin && <button className="button primary" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'reopen'))}>Вернуть в работу</button>}
         </footer>
       </aside>

@@ -5,6 +5,7 @@
 - Production requires deployment-specific database credentials and refuses SQLite.
 - OAuth state and local sessions are signed with `APP_SECRET`.
 - Browser mutations require double-submit CSRF validation.
+- Closing a visible task as `DONE` requires the opt-in `can_complete_tasks` permission or a confirmed administrator role; visibility alone does not grant it. Without this permission, the `complete` action submits the assignee's work for `REVIEW`. Reviewers cannot use this permission to edit, reassign, reopen, or access hidden tasks.
 - Integration requests use a distinct secret, constant-time comparison, timestamp window and nonce replay storage.
 - App actions enter the browser through OAuth; app-provided roles are rejected.
 - Launch codes retained for compatibility are random, hash-stored, one-use and short-lived.

@@ -46,6 +46,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     view_created_tasks: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     view_watched_tasks: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    can_complete_tasks: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     access_mode: Mapped[AccessMode] = mapped_column(
         Enum(AccessMode, name="user_access_mode", native_enum=False),
         default=AccessMode.NONE,

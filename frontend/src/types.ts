@@ -10,6 +10,7 @@ export interface User {
   avatar_url: string | null;
   is_admin: boolean;
   is_active: boolean;
+  can_complete_tasks: boolean;
   created_at: string;
   updated_at: string;
 }

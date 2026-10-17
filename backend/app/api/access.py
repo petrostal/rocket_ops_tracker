@@ -51,6 +51,8 @@ def update_access(
         user.view_created_tasks = data.view_created_tasks
     if data.view_watched_tasks is not None:
         user.view_watched_tasks = data.view_watched_tasks
+    if data.can_complete_tasks is not None:
+        user.can_complete_tasks = data.can_complete_tasks
     user.access_tags = tags if data.access_mode in {AccessMode.TAGS, AccessMode.ASSIGNED_OR_TAGS} else []
     db.commit()
     return db.scalar(

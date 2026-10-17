@@ -15,6 +15,7 @@ class UserRead(BaseModel):
     avatar_url: str | None
     is_admin: bool
     is_active: bool
+    can_complete_tasks: bool
     created_at: datetime
     updated_at: datetime
 

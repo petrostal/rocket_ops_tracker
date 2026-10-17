@@ -18,7 +18,7 @@ const columns: { status: TaskStatus; label: string }[] = [
 const activeStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'WAITING', 'REVIEW'];
 const donePageSize = 10;
 
-export function KanbanPage({ users, tags, userId, isAdmin = false, onCreate, onOpen }: { users: User[]; tags: Tag[]; userId: number; isAdmin?: boolean; onCreate: () => void; onOpen: (task: TaskSummary) => void }) {
+export function KanbanPage({ users, tags, userId, isAdmin = false, canComplete = false, onCreate, onOpen }: { users: User[]; tags: Tag[]; userId: number; isAdmin?: boolean; canComplete?: boolean; onCreate: () => void; onOpen: (task: TaskSummary) => void }) {
   const [filters, setFilters] = useStoredState(`filters:kanban:${userId}`, emptyFilters, parseFilterState);
   const deferredSearch = useDeferredValue(filters.search);
   const baseParams = useMemo(() => {
@@ -51,6 +51,14 @@ export function KanbanPage({ users, tags, userId, isAdmin = false, onCreate, onO
     const task = event.active.data.current?.task as TaskSummary | undefined;
     const target = event.over.id as TaskStatus;
     if (!task || task.status === target) return;
+    if (target === 'DONE' && !isAdmin && !canComplete) {
+      setMoveError('Нет разрешения переводить задачи в «Готово». Переместите задачу в «Проверка».');
+      return;
+    }
+    if (target !== 'DONE' && !isAdmin && task.assignee?.id !== userId && (task.assignee || task.creator.id !== userId)) {
+      setMoveError('Для этой задачи вам доступен только перевод в «Готово».');
+      return;
+    }
     const beforeActive = active.items;
     const beforeDone = done.items;
     const optimistic = { ...task, status: target, completed_at: target === 'DONE' ? new Date().toISOString() : null };
@@ -71,7 +79,7 @@ export function KanbanPage({ users, tags, userId, isAdmin = false, onCreate, onO
       <PageHeader title="Канбан" subtitle="Операционные задачи команды" onCreate={onCreate} />
       <Filters value={filters} users={users} tags={tags} onChange={setFilters} compact />
       {(active.error || done.error || moveError) && <div className="inline-error">{active.error || done.error || moveError}</div>}
-      {(active.loading || done.loading) ? <Loading /> : <DndContext sensors={sensors} onDragEnd={(event) => void move(event)}><div className="kanban-board">{columns.map((column) => <KanbanColumn key={column.status} {...column} tasks={items.filter((task) => task.status === column.status)} total={column.status === 'DONE' ? done.total : undefined} loadingMore={column.status === 'DONE' && done.loadingMore} onLoadMore={column.status === 'DONE' ? done.loadMore : undefined} canMove={(task) => isAdmin || (task.status !== 'DONE' && (task.assignee?.id === userId || (!task.assignee && task.creator.id === userId)))} onOpen={onOpen} onCreate={onCreate} />)}</div></DndContext>}
+      {(active.loading || done.loading) ? <Loading /> : <DndContext sensors={sensors} onDragEnd={(event) => void move(event)}><div className="kanban-board">{columns.map((column) => <KanbanColumn key={column.status} {...column} tasks={items.filter((task) => task.status === column.status)} total={column.status === 'DONE' ? done.total : undefined} loadingMore={column.status === 'DONE' && done.loadingMore} onLoadMore={column.status === 'DONE' ? done.loadMore : undefined} canMove={(task) => isAdmin || (task.status !== 'DONE' && (canComplete || task.assignee?.id === userId || (!task.assignee && task.creator.id === userId)))} onOpen={onOpen} onCreate={onCreate} />)}</div></DndContext>}
     </div>
   );
 }

@@ -23,15 +23,16 @@ function AccessRow({ user, tags, onSaved }: { user: AccessUser; tags: Tag[]; onS
   const [tagIds, setTagIds] = useState<number[]>(user.access_tags.map((tag) => tag.id));
   const [viewCreated, setViewCreated] = useState(user.view_created_tasks);
   const [viewWatched, setViewWatched] = useState(user.view_watched_tasks);
+  const [canComplete, setCanComplete] = useState(user.can_complete_tasks);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
-  useEffect(() => { setMode(user.access_mode); setTagIds(user.access_tags.map((tag) => tag.id)); setViewCreated(user.view_created_tasks); setViewWatched(user.view_watched_tasks); }, [user]);
+  useEffect(() => { setMode(user.access_mode); setTagIds(user.access_tags.map((tag) => tag.id)); setViewCreated(user.view_created_tasks); setViewWatched(user.view_watched_tasks); setCanComplete(user.can_complete_tasks); }, [user]);
   const tagsEnabled = mode === 'TAGS' || mode === 'ASSIGNED_OR_TAGS';
   const toggleTag = (id: number) => setTagIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const save = async () => {
     setSaving(true); setStatus('');
     try {
-      const updated = await api.updateAccess(user.id, mode, tagsEnabled ? tagIds : [], viewCreated, viewWatched);
+      const updated = await api.updateAccess(user.id, mode, tagsEnabled ? tagIds : [], viewCreated, viewWatched, canComplete);
       onSaved(updated); setStatus('Сохранено');
     } catch (reason) { setStatus(message(reason)); }
     finally { setSaving(false); }
@@ -43,13 +44,17 @@ function AccessRow({ user, tags, onSaved }: { user: AccessUser; tags: Tag[]; onS
       {!user.is_active ? <span className="access-badge muted-badge">Отключён</span> : null}
       {user.is_admin ? <span className="access-badge admin-badge"><ShieldCheck size={13} />Rocket.Chat admin</span> : null}
     </header>
-    {user.is_admin ? <div className="access-admin-note">Полный доступ назначается автоматически ролью администратора Rocket.Chat.</div> : <>
+    {user.is_admin ? <div className="access-admin-note">Полный доступ, включая перевод задач в «Готово», назначается автоматически ролью администратора Rocket.Chat.</div> : <>
       <label className="field"><span>Видимость задач</span><select value={mode} onChange={(event) => { setMode(event.target.value as AccessMode); setStatus(''); }}>{modes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
       <p className="access-mode-description">{modes.find((item) => item.value === mode)?.description}</p>
       <div className="access-participation">
         <label><input type="checkbox" checked={viewCreated} disabled={saving || mode === 'NONE' || mode === 'ALL'} onChange={(event) => { setViewCreated(event.target.checked); setStatus(''); }} />Видеть созданные мной задачи</label>
         <label><input type="checkbox" checked={viewWatched} disabled={saving || mode === 'NONE' || mode === 'ALL'} onChange={(event) => { setViewWatched(event.target.checked); setStatus(''); }} />Видеть задачи, где я наблюдатель</label>
         <small>{mode === 'NONE' ? 'Нет доступа запрещает просмотр любых задач и уведомления.' : mode === 'ALL' ? 'Все задачи уже доступны.' : 'Дополняет выбранное правило. Права исполнителя не добавляются.'}</small>
+      </div>
+      <div className="access-participation access-completion">
+        <label><input type="checkbox" checked={canComplete} disabled={saving || mode === 'NONE'} onChange={(event) => { setCanComplete(event.target.checked); setStatus(''); }} />Может переводить задачи в «Готово»</label>
+        <small>Разрешает закрывать доступные задачи, в том числе назначенные другим. Без этого права кнопка «Завершить» отправляет задачу на проверку.</small>
       </div>
       {tagsEnabled ? <div className="access-tags"><span>Разрешённые теги</span><div>{tags.length ? tags.map((tag) => <button type="button" key={tag.id} aria-pressed={tagIds.includes(tag.id)} className={tagIds.includes(tag.id) ? 'selected' : ''} onClick={() => toggleTag(tag.id)}>{tag.name}</button>) : <small>Сначала создайте хотя бы один тег задачи</small>}</div></div> : null}
       <footer><span className={status === 'Сохранено' ? 'save-ok' : 'save-error'}>{status}</span><button type="button" className="button primary small" disabled={saving || (tagsEnabled && tagIds.length === 0)} onClick={() => void save()}><Save size={15} />{saving ? 'Сохраняем…' : 'Сохранить'}</button></footer>

@@ -35,8 +35,17 @@ def test_task_crud_and_status_flow(auth_client: TestClient, users: dict[str, Use
     assert review.json()["status"] == "REVIEW"
     completed = auth_client.post(f"/api/tasks/{task['id']}/complete")
     assert completed.status_code == 200
-    assert completed.json()["status"] == "DONE"
+    assert completed.json()["status"] == "REVIEW"
+    assert completed.json()["completed_at"] is None
+    assert auth_client.patch(f"/api/tasks/{task['id']}", json={"status": "DONE"}).status_code == 403
 
+    authenticate(auth_client, users["admin"])
+    completed = auth_client.post(f"/api/tasks/{task['id']}/complete")
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "DONE"
+    assert completed.json()["completed_at"]
+
+    authenticate(auth_client, users["assignee"])
     forbidden = auth_client.post(f"/api/tasks/{task['id']}/reopen")
     assert forbidden.status_code == 403
     authenticate(auth_client, users["admin"])

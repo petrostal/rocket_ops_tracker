@@ -133,6 +133,7 @@ a { color: var(--accent); }
 .access-participation label { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; line-height: 1.5; }
 .access-participation input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--accent); }
 .access-participation small, .watcher-editor > small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.access-completion { padding-top: 12px; border-top: 1px solid var(--border); }
 .watcher-editor { display: grid; gap: 8px; min-width: 0; }
 .watchers-summary { display: flex; align-items: center; gap: 7px; padding: 4px 0; list-style: none; color: #172039; font-size: 12px; font-weight: 650; cursor: pointer; }
 .watchers-summary::-webkit-details-marker { display: none; }
@@ -343,6 +344,7 @@ a { color: var(--accent); }
 .comment-image-preview img { display: block; max-width: 100%; width: auto; max-height: 300px; object-fit: contain; }
 .comments-empty { margin: 0; padding: 15px 12px; font-size: 11px; }
 .drawer-footer { border-top: 1px solid var(--border); padding: 15px 20px; display: flex; justify-content: flex-end; gap: 8px; background: #fff; }
+.review-pending { align-self: center; color: var(--muted); font-size: 12px; }
 
 .list-page.has-task-panel { display: flex; flex-direction: column; height: 100dvh; min-height: 0; max-width: none; padding-bottom: 22px; }
 .has-task-panel > .page-header, .has-task-panel > .filters, .has-task-panel > .inline-error { flex: 0 0 auto; }
