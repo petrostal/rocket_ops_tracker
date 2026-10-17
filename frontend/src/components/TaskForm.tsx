@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import type { Priority, Tag, Task, TaskDraft, User } from '../types';
 import { DescriptionEditor } from './TaskDescription';
 import { TagEditor } from './Tags';
+import { WatcherEditor } from './WatcherEditor';
 
 interface Props {
   users: User[];
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export function TaskForm({ users, tags, onClose, onCreated, roomId, roomName }: Props) {
-  const [draft, setDraft] = useState<TaskDraft>({ title: '', description: '', priority: 'NORMAL', assignee_id: null, due_date: null, tags: [], rocket_chat_room_id: roomId, rocket_chat_room_name: roomName });
+  const [draft, setDraft] = useState<TaskDraft>({ title: '', description: '', priority: 'NORMAL', assignee_id: null, due_date: null, tags: [], watcher_ids: [] });
   const [photos, setPhotos] = useState<File[]>([]);
   const [createdTask, setCreatedTask] = useState<Task | null>(null);
   const [draggingPhotos, setDraggingPhotos] = useState(false);
@@ -89,6 +90,7 @@ export function TaskForm({ users, tags, onClose, onCreated, roomId, roomName }: 
             <label className="field date-field"><span>Срок</span><CalendarDays size={17} /><input type="date" value={draft.due_date ?? ''} onChange={(e) => set('due_date', e.target.value || null)} /></label>
           </div>
           {(roomName || roomId) && <div className="source-hint">Источник: Rocket.Chat #{roomName || roomId}</div>}
+          <section className="field"><span>Наблюдатели</span><WatcherEditor value={draft.watcher_ids} users={users} onChange={(ids) => set('watcher_ids', ids)} disabled={saving || !!createdTask} /></section>
           {error && <p className="form-error" role="alert">{error}</p>}
         </div>
         <footer><button type="button" className="button secondary" onClick={close}>{createdTask ? 'Открыть задачу' : 'Отмена'}</button><button className="button primary" disabled={saving || !draft.title.trim()}>{saving ? (createdTask ? 'Загружаем фото…' : 'Создаём…') : createdTask ? 'Повторить загрузку' : photos.length ? `Создать и загрузить фото (${photos.length})` : 'Создать задачу'}</button></footer>

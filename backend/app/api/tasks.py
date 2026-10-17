@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -11,7 +13,7 @@ from app.models.task import Priority, Task, TaskStatus
 from app.models.user import User
 from app.schemas.task import AssignRequest, TaskCommentCreate, TaskCreate, TaskList, TaskRead, TaskSummary, TaskUpdate
 from app.services.attachments import attachment_path, delete_attachment, get_attachment, save_attachment
-from app.services.notifications import notify_assigned, notify_comment, notify_created, notify_status
+from app.services.notifications import notify_assigned, notify_comment, notify_created, notify_status, notify_watchers_added
 from app.services.access import can_view_task
 from app.services.tasks import (
     DuplicateSourceTask,
@@ -51,6 +53,7 @@ def tasks(
     status_filter: list[TaskStatus] | None = Query(None, alias="status"),
     assignee: str | None = None,
     creator: int | None = None,
+    participation: Literal["assigned", "created", "watching"] | None = None,
     room: str | None = None,
     priority: Priority | None = None,
     overdue: bool | None = None,
@@ -67,6 +70,7 @@ def tasks(
         statuses=status_filter,
         assignee=assignee,
         creator=creator,
+        participation=participation,
         room=room,
         priority=priority,
         overdue=overdue,
@@ -91,6 +95,7 @@ def create(
     except DuplicateSourceTask as exc:
         raise _duplicate(exc, user) from exc
     notify_created(task, settings)
+    notify_watchers_added(task, user, set(), settings)
     return task
 
 
@@ -173,7 +178,9 @@ def patch_task(
     task = get_task(db, task_id, user)
     old_status = task.status
     old_assignee_id = task.assignee_id
+    old_watcher_ids = {watcher.id for watcher in task.watchers}
     updated = update_task(db, task, data, user)
+    notify_watchers_added(updated, user, old_watcher_ids, settings)
     notify_assigned(updated, user, old_assignee_id, settings)
     notify_status(updated, user, old_status, settings)
     return updated

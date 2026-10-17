@@ -9,12 +9,13 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import Settings
 from app.models.task import Priority, Tag, Task, TaskAttachment, TaskComment, TaskEvent, TaskStatus
-from app.models.user import User
+from app.models.user import AccessMode, User
 from app.schemas.task import IntegrationTaskCreate, TaskCommentCreate, TaskCreate, TaskUpdate
-from app.services.access import task_visibility_clause
+from app.services.access import can_view_task, task_visibility_clause
 
 
 LOAD_TASK = (
+    selectinload(Task.watchers).selectinload(User.access_tags),
     selectinload(Task.creator),
     selectinload(Task.assignee),
     selectinload(Task.events).selectinload(TaskEvent.actor),
@@ -66,6 +67,7 @@ def list_tasks(
     statuses: list[TaskStatus] | None = None,
     assignee: str | None = None,
     creator: int | None = None,
+    participation: str | None = None,
     room: str | None = None,
     priority: Priority | None = None,
     overdue: bool | None = None,
@@ -92,6 +94,12 @@ def list_tasks(
             query = query.where(Task.assignee_id == assignee_id)
     if creator is not None:
         query = query.where(Task.creator_id == creator)
+    if participation == "assigned":
+        query = query.where(Task.assignee_id == current_user.id)
+    elif participation == "created":
+        query = query.where(Task.creator_id == current_user.id)
+    elif participation == "watching":
+        query = query.where(Task.watchers.any(User.id == current_user.id))
     if room:
         query = query.where(or_(Task.rocket_chat_room_id == room, Task.rocket_chat_room_name == room))
     if priority:
@@ -151,13 +159,17 @@ def create_task(db: Session, data: TaskCreate | IntegrationTaskCreate, actor: Us
             raise DuplicateSourceTask(existing)
     payload = data.model_dump()
     tag_names = payload.pop("tags")
+    watchers = _resolve_watchers(db, payload.pop("watcher_ids"))
     task = Task(**payload, creator_id=actor.id)
+    task.watchers = watchers
     db.add(task)
     _set_tags(db, task, tag_names)
     db.flush()
     _event(db, task, "task_created", actor, {"status": TaskStatus.TODO.value})
     if task.assignee_id:
         _event(db, task, "assigned", actor, {"assignee_id": task.assignee_id})
+    if watchers:
+        _event(db, task, "watchers_changed", actor, {"added": [user.username for user in watchers], "removed": []})
     try:
         db.commit()
     except IntegrityError as exc:
@@ -174,10 +186,23 @@ def _can_edit(task: Task, actor: User) -> bool:
     return actor.is_admin or task.creator_id == actor.id or task.assignee_id == actor.id
 
 
+def _resolve_watchers(db: Session, ids: list[int]) -> list[User]:
+    watchers = list(db.scalars(select(User).where(User.id.in_(ids)).order_by(User.display_name, User.id)).all()) if ids else []
+    if len(watchers) != len(set(ids)):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "One or more watchers do not exist")
+    if any(not user.is_active or (not user.is_admin and user.access_mode != AccessMode.ALL
+           and (user.access_mode == AccessMode.NONE or not user.view_watched_tasks)) for user in watchers):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Наблюдателю нужен доступ к трекеру и разрешение видеть наблюдаемые задачи")
+    return watchers
+
+
 def update_task(db: Session, task: Task, data: TaskUpdate, actor: User) -> Task:
     if not _can_edit(task, actor):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You cannot edit this task")
     changes = data.model_dump(exclude_unset=True)
+    if "watcher_ids" in changes and not (actor.is_admin or task.creator_id == actor.id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the creator or an administrator can manage watchers")
+    watchers = _resolve_watchers(db, changes["watcher_ids"]) if "watcher_ids" in changes else None
     if {"priority", "due_date"}.intersection(changes) and not actor.is_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only administrators can change priority or due date")
     if "assignee_id" in changes and not (actor.is_admin or task.creator_id == actor.id):
@@ -186,6 +211,7 @@ def update_task(db: Session, task: Task, data: TaskUpdate, actor: User) -> Task:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Assignee not found")
     if "status" in changes:
         target = changes.pop("status")
+        _check_transition(task, target, actor)
         if changes:
             task = update_task(db, task, TaskUpdate(**changes), actor)
         return transition_task(db, task, target, actor)
@@ -193,6 +219,16 @@ def update_task(db: Session, task: Task, data: TaskUpdate, actor: User) -> Task:
     old_priority = task.priority
     old_due = task.due_date
     tag_names = changes.pop("tags", None)
+    changes.pop("watcher_ids", None)
+    if watchers is not None:
+        previous = {user.id: user.username for user in task.watchers}
+        current = {user.id: user.username for user in watchers}
+        if previous.keys() != current.keys():
+            task.watchers = watchers
+            _event(db, task, "watchers_changed", actor, {
+                "added": [name for uid, name in current.items() if uid not in previous],
+                "removed": [name for uid, name in previous.items() if uid not in current],
+            })
     old_tags = [tag.normalized_name for tag in task.tags]
     for name, value in changes.items():
         setattr(task, name, value)
@@ -219,6 +255,8 @@ def assign_task(db: Session, task: Task, assignee_id: int | None, actor: User) -
 
 
 def take_task(db: Session, task: Task, actor: User) -> Task:
+    if not _can_edit(task, actor) and not can_view_task(actor, task, include_participation=False):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Watching a task does not grant permission to take it")
     if task.assignee_id is not None and task.assignee_id != actor.id:
         raise HTTPException(status.HTTP_409_CONFLICT, "Task is already assigned")
     if task.assignee_id == actor.id:
@@ -229,11 +267,15 @@ def take_task(db: Session, task: Task, actor: User) -> Task:
     return _get_task_unrestricted(db, task.id)
 
 
-def transition_task(db: Session, task: Task, target: TaskStatus, actor: User) -> Task:
+def _check_transition(task: Task, target: TaskStatus, actor: User) -> None:
     if not (actor.is_admin or task.assignee_id == actor.id or (task.assignee_id is None and task.creator_id == actor.id)):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the assignee can change task status")
     if task.status == TaskStatus.DONE and target != TaskStatus.DONE and not actor.is_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only administrators can reopen completed tasks")
+
+
+def transition_task(db: Session, task: Task, target: TaskStatus, actor: User) -> Task:
+    _check_transition(task, target, actor)
     old = task.status
     if old == target:
         return task

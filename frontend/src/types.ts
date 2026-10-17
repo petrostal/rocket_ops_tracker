@@ -45,6 +45,8 @@ export interface Tag {
 
 export interface AccessUser extends User {
   access_mode: AccessMode;
+  view_created_tasks: boolean;
+  view_watched_tasks: boolean;
   access_tags: Tag[];
 }
 
@@ -74,6 +76,7 @@ export interface TaskSummary {
 }
 
 export interface Task extends TaskSummary {
+  watchers: User[];
   events: TaskEvent[];
   comments: TaskComment[];
   attachments: TaskAttachment[];
@@ -93,6 +96,7 @@ export interface TaskDraft {
   assignee_id: number | null;
   due_date: string | null;
   tags: string[];
+  watcher_ids: number[];
   rocket_chat_room_id?: string | null;
   rocket_chat_room_name?: string | null;
 }

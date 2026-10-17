@@ -7,16 +7,16 @@ import { TagList } from './Tags';
 
 const priorityLabels = { LOW: 'Низкий', NORMAL: 'Обычный', HIGH: 'Высокий', CRITICAL: 'Критичный' } as const;
 
-export function TaskCard({ task, onOpen }: { task: TaskSummary; onOpen: (task: TaskSummary) => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { task } });
+export function TaskCard({ task, onOpen, draggable = false }: { task: TaskSummary; onOpen: (task: TaskSummary) => void; draggable?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { task }, disabled: !draggable });
   const style: CSSProperties = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {};
   const overdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'DONE';
   return (
     <article ref={setNodeRef} style={style} className={`task-card priority-${task.priority.toLowerCase()} ${isDragging ? 'dragging' : ''}`}>
       <div className="card-head">
-        <button className="drag-handle" aria-label={`Переместить задачу ${task.id}`} {...listeners} {...attributes}>
+        {draggable ? <button className="drag-handle" aria-label={`Переместить задачу ${task.id}`} {...listeners} {...attributes}>
           <GripVertical size={16} />
-        </button>
+        </button> : null}
         <span className="task-id">#{task.id}</span>
         <span className={`priority-label ${task.priority.toLowerCase()}`}><i />{priorityLabels[task.priority]}</span>
       </div>

@@ -129,6 +129,20 @@ a { color: var(--accent); }
 .access-card > footer > span { margin-right: auto; font-size: 10px; }
 .save-ok { color: var(--success); }.save-error { color: var(--danger); }
 .access-admin-note { padding: 12px; border-radius: 7px; background: #f7f8fb; color: #596278; font-size: 11px; line-height: 1.5; }
+.access-participation { display: grid; gap: 10px; margin: 12px 0; }
+.access-participation label { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; line-height: 1.5; }
+.access-participation input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--accent); }
+.access-participation small, .watcher-editor > small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.watcher-editor { display: grid; gap: 8px; min-width: 0; }
+.watcher-editor input, .watcher-editor select { width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 6px; background: #fff; padding: 9px 10px; color: var(--text); font: inherit; font-size: 12px; }
+.watcher-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.watcher-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 5px 8px; border-radius: 7px; background: #f1f3fa; color: #425174; font-size: 11px; overflow-wrap: anywhere; }
+.watcher-chip small { color: var(--muted); }
+.watcher-chip button { display: inline-flex; flex: 0 0 auto; padding: 2px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.watcher-chip button:disabled { opacity: .5; cursor: default; }
+.participation-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.participation-tabs button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--muted); cursor: pointer; }
+.participation-tabs button[aria-pressed="true"] { border-color: var(--accent); background: #f0edff; color: var(--accent); font-weight: 650; }
 .spin { animation: spin .8s linear infinite; }
 
 .kanban-board { display: grid; grid-template-columns: repeat(5, minmax(260px, 1fr)); align-items: start; gap: 10px; overflow-x: auto; padding-bottom: 14px; }

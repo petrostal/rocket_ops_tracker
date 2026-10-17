@@ -6,6 +6,7 @@ import { initials } from './AppShell';
 import { CommentBody } from './CommentBody';
 import { DescriptionEditor, TaskDescription, toggleChecklistItem } from './TaskDescription';
 import { TagEditor, TagList } from './Tags';
+import { WatcherEditor } from './WatcherEditor';
 
 const statusLabels: Record<TaskStatus, string> = { TODO: 'Нужно сделать', IN_PROGRESS: 'В работе', WAITING: 'Ожидание', REVIEW: 'Проверка', DONE: 'Готово' };
 const eventLabels: Record<string, string> = {
@@ -16,6 +17,7 @@ const eventLabels: Record<string, string> = {
   tags_changed: 'изменил(а) теги',
   attachment_added: 'добавил(а) вложение',
   attachment_deleted: 'удалил(а) вложение',
+  watchers_changed: 'изменил(а) наблюдателей',
 };
 
 export function TaskDrawer({ task: initial, user, users, availableTags, onClose, onChanged, onDeleted }: { task: Task; user: User; users: User[]; availableTags: Tag[]; onClose: () => void; onChanged: (task: Task) => void; onDeleted: (id: number) => void }) {
@@ -33,6 +35,8 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
   useEffect(() => { setTask(initial); setTitle(initial.title); setDescription(initial.description); setTags(initial.tags.map((tag) => tag.name)); }, [initial]);
   const canEdit = user.is_admin || task.creator.id === user.id || task.assignee?.id === user.id;
   const canAssign = user.is_admin || task.creator.id === user.id;
+  const canChangeStatus = user.is_admin || task.assignee?.id === user.id || (!task.assignee && task.creator.id === user.id);
+  const canTake = !task.assignee && (canAssign || !task.watchers.some((watcher) => watcher.id === user.id));
   const apply = async (operation: () => Promise<Task>) => {
     setBusy(true); setError('');
     try { const next = await operation(); setTask(next); onChanged(next); }
@@ -98,7 +102,7 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
         </header>
         <div className="drawer-scroll">
           <section className="properties-grid">
-            <label><span>Статус</span><select value={task.status} disabled={!canEdit || busy} onChange={(e) => void apply(() => api.moveTask(task, e.target.value as TaskStatus))}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label><span>Статус</span><select value={task.status} disabled={!canChangeStatus || busy || (task.status === 'DONE' && !user.is_admin)} onChange={(e) => void apply(() => api.moveTask(task, e.target.value as TaskStatus))}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <label><span>Приоритет</span><select value={task.priority} disabled={!user.is_admin || busy} onChange={(e) => void apply(() => api.updateTask(task.id, { priority: e.target.value as Priority }))}><option value="LOW">Низкий</option><option value="NORMAL">Обычный</option><option value="HIGH">Высокий</option><option value="CRITICAL">Критичный</option></select></label>
             <label><span>Исполнитель</span><select value={task.assignee?.id ?? ''} disabled={!canAssign || busy} onChange={(e) => void apply(() => api.updateTask(task.id, { assignee_id: e.target.value ? Number(e.target.value) : null }))}><option value="">Не назначен</option>{users.map((item) => <option key={item.id} value={item.id}>@{item.username}</option>)}</select></label>
             <label className="date-property"><span>Срок</span><CalendarDays size={17} /><input type="date" disabled={!user.is_admin || busy} value={task.due_date?.slice(0, 10) ?? ''} onChange={(e) => void apply(() => api.updateTask(task.id, { due_date: e.target.value ? new Date(`${e.target.value}T23:59:00`).toISOString() : null }))} /></label>
@@ -106,6 +110,10 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
           </section>
 
           <section className="drawer-section tags-section"><h3>Теги</h3>{editing ? <TagEditor value={tags} suggestions={availableTags} onChange={setTags} disabled={busy} /> : <TagList tags={task.tags} empty />}</section>
+
+          <section className="drawer-section"><h3>Наблюдатели <span className="section-count">{task.watchers.length}</span></h3>
+            {canAssign ? <WatcherEditor value={task.watchers.map((watcher) => watcher.id)} users={[...users, ...task.watchers]} disabled={busy} onChange={(watcher_ids) => void apply(() => api.updateTask(task.id, { watcher_ids }))} /> : <div className="watcher-list">{task.watchers.length ? task.watchers.map((watcher) => <span className="watcher-chip" key={watcher.id}>{watcher.display_name} <small>@{watcher.username}</small></span>) : <p className="muted">Наблюдателей пока нет</p>}</div>}
+          </section>
 
           <section className="drawer-section"><h3>Описание</h3>{editing ? <DescriptionEditor value={description} onChange={setDescription} rows={6} disabled={busy} /> : <TaskDescription value={task.description} disabled={!canEdit || busy} onToggle={(lineIndex, checked) => void toggleChecklist(lineIndex, checked)} />}</section>
 
@@ -168,18 +176,25 @@ export function TaskDrawer({ task: initial, user, users, availableTags, onClose,
             </div>
           </section>
 
-          <section className="drawer-section"><h3>История активности</h3><div className="activity-list">{task.events.length ? [...task.events].reverse().map((event) => <div className="activity-row" key={event.id}><span className="avatar">{initials(event.actor?.display_name || '?')}</span><div><p><strong>@{event.actor?.username || 'system'}</strong> {eventLabels[event.event_type] || event.event_type}</p><small>{formatDateTime(event.created_at)}</small></div></div>) : <p className="muted">Событий пока нет</p>}</div></section>
+          <section className="drawer-section"><h3>История активности</h3><div className="activity-list">{task.events.length ? [...task.events].reverse().map((event) => <div className="activity-row" key={event.id}><span className="avatar">{initials(event.actor?.display_name || '?')}</span><div><p><strong>@{event.actor?.username || 'system'}</strong> {eventLabels[event.event_type] || event.event_type}</p>{event.event_type === 'watchers_changed' ? <p>{watcherChanges(event.event_metadata)}</p> : null}<small>{formatDateTime(event.created_at)}</small></div></div>) : <p className="muted">Событий пока нет</p>}</div></section>
           {error && <p className="form-error" role="alert">{error}</p>}
         </div>
         <footer className="drawer-footer">
-          {!task.assignee && <button className="button secondary" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'take'))}><UserPlus size={17} />Взять</button>}
-          {task.status !== 'IN_PROGRESS' && task.status !== 'DONE' && <button className="button primary" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'start'))}><Play size={17} />Начать</button>}
-          {task.status !== 'DONE' && <button className="button success" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'complete'))}><Check size={18} />Завершить</button>}
+          {canTake && <button className="button secondary" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'take'))}><UserPlus size={17} />Взять</button>}
+          {canChangeStatus && task.status !== 'IN_PROGRESS' && task.status !== 'DONE' && <button className="button primary" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'start'))}><Play size={17} />Начать</button>}
+          {canChangeStatus && task.status !== 'DONE' && <button className="button success" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'complete'))}><Check size={18} />Завершить</button>}
           {task.status === 'DONE' && user.is_admin && <button className="button primary" disabled={busy} onClick={() => void apply(() => api.action(task.id, 'reopen'))}>Вернуть в работу</button>}
         </footer>
       </aside>
     </div>
   );
+}
+
+function watcherChanges(metadata: Record<string, unknown>): string {
+  return [['added', 'Добавлены'], ['removed', 'Убраны']].flatMap(([key, label]) => {
+    const names = metadata[key];
+    return Array.isArray(names) && names.length ? [`${label}: ${names.map((name) => `@${String(name)}`).join(', ')}`] : [];
+  }).join(' · ');
 }
 
 function formatDateTime(value: string): string {

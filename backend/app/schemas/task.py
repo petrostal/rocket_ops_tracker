@@ -28,6 +28,12 @@ def clean_tag_names(values: list[str] | None) -> list[str] | None:
     return result
 
 
+def clean_watcher_ids(values: list[int]) -> list[int]:
+    if any(value <= 0 for value in values):
+        raise ValueError("Watcher IDs must be positive integers")
+    return list(dict.fromkeys(values))
+
+
 class SourceFields(BaseModel):
     rocket_chat_room_id: str | None = Field(None, max_length=64)
     rocket_chat_room_name: str | None = Field(None, max_length=255)
@@ -50,6 +56,9 @@ class TaskCreate(BaseModel):
     assignee_id: int | None = None
     due_date: datetime | None = None
     tags: list[str] = Field(default_factory=list, max_length=20)
+    watcher_ids: list[int] = Field(default_factory=list, max_length=50)
+
+    _clean_watchers = field_validator("watcher_ids")(clean_watcher_ids)
 
     @field_validator("title")
     @classmethod
@@ -77,6 +86,9 @@ class TaskUpdate(BaseModel):
     assignee_id: int | None = None
     due_date: datetime | None = None
     tags: list[str] | None = Field(None, max_length=20)
+    watcher_ids: list[int] = Field(default_factory=list, max_length=50)
+
+    _clean_watchers = field_validator("watcher_ids")(clean_watcher_ids)
 
     @field_validator("tags")
     @classmethod
@@ -155,6 +167,7 @@ class TaskSummary(SourceFields):
 
 
 class TaskRead(TaskSummary):
+    watchers: list[UserRead] = Field(default_factory=list)
     events: list[TaskEventRead] = []
     comments: list[TaskCommentRead] = []
     attachments: list[TaskAttachmentRead] = []

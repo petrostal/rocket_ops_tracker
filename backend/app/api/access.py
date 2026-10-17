@@ -47,6 +47,10 @@ def update_access(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "One or more tags do not exist")
 
     user.access_mode = data.access_mode
+    if data.view_created_tasks is not None:
+        user.view_created_tasks = data.view_created_tasks
+    if data.view_watched_tasks is not None:
+        user.view_watched_tasks = data.view_watched_tasks
     user.access_tags = tags if data.access_mode in {AccessMode.TAGS, AccessMode.ASSIGNED_OR_TAGS} else []
     db.commit()
     return db.scalar(

@@ -44,6 +44,16 @@ OAuth and explicit server-side synchronization are authoritative for administrat
 
 Browser task creation accepts only ordinary task fields. Rocket.Chat room/message/author metadata is represented by `IntegrationTaskCreate` and can only enter through authenticated integration handlers.
 
-## Realtime
+## Task participation and visibility
+
+The existing per-user visibility profile remains the base policy. Administrators can additionally enable `view_created_tasks` (off by default) and `view_watched_tasks` (on by default). These flags add tasks authored or watched by the user to their permitted tasks. `NONE` denies all tasks regardless of participation; inactive users are denied as well. Lists, counts, direct links, tags, comments and attachment routes use the same backend policy.
+
+Authors and administrators can select up to 50 active, eligible watchers when creating or editing a task. Watchers are stored in `task_watchers`, with indexes for both task and user lookups. Adding/removing watchers is recorded in activity history. Watching grants viewing, discussion and attachment access, not task editing, reassignment or status changes. Removing a watcher revokes only this participation grant; another base rule may still permit access.
+
+New watchers receive a direct message in Rocket.Chat. Status changes and comments also notify watchers, with one message per recipient per event and comment authors excluded. Notification delivery checks current visibility and active status; disabled/no-access users receive no task content. Notifications use the existing `NOTIFY_CREATOR_UPDATES` switch and never post to shared channels.
+
+The My Tasks view offers Assigned to me, Created by me and Watching filters, intersected with the user's visibility policy. Existing visibility profiles are unchanged by migration. To enable authorship access for a user, an administrator checks “Видеть созданные мной задачи” under Access and saves.
+
+## Realtime updates
 
 The UI refreshes after mutations and polls while visible. This avoids an additional Redis dependency; SSE can be added if polling load warrants it.

@@ -77,7 +77,7 @@ export function App() {
   };
   const syncTask = (task: Task) => { setSelected(task); setTags((current) => mergeTags(current, task.tags)); };
   return <AppShell user={user} active={active} embedded={embedded} onCreate={() => setCreating(true)}>
-    {active === 'access' && user.is_admin ? <AccessPage tags={tags} onUsersSynced={setUsers} /> : active === 'my' ? <MyTasksPage tags={tags} userId={user.id} onCreate={() => setCreating(true)} onOpen={open} /> : active === 'all' ? <AllTasksPage users={users} tags={tags} userId={user.id} onCreate={() => setCreating(true)} onOpen={open} /> : <KanbanPage users={users} tags={tags} userId={user.id} onCreate={() => setCreating(true)} onOpen={open} />}
+    {active === 'access' && user.is_admin ? <AccessPage tags={tags} onUsersSynced={setUsers} /> : active === 'my' ? <MyTasksPage tags={tags} userId={user.id} onCreate={() => setCreating(true)} onOpen={open} /> : active === 'all' ? <AllTasksPage users={users} tags={tags} userId={user.id} onCreate={() => setCreating(true)} onOpen={open} /> : <KanbanPage users={users} tags={tags} userId={user.id} isAdmin={user.is_admin} onCreate={() => setCreating(true)} onOpen={open} />}
     {creating && <TaskForm users={users} tags={tags} onClose={() => { setCreating(false); if (routePath === '/create') navigate('/kanban'); }} onCreated={(task) => { setCreating(false); syncTask(task); open(task); }} />}
     {selected && <TaskDrawer task={selected} user={user} users={users} availableTags={tags} onClose={closeDrawer} onChanged={syncTask} onDeleted={() => setSelected(null)} />}
   </AppShell>;

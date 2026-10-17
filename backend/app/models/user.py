@@ -44,6 +44,8 @@ class User(Base):
     avatar_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    view_created_tasks: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    view_watched_tasks: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     access_mode: Mapped[AccessMode] = mapped_column(
         Enum(AccessMode, name="user_access_mode", native_enum=False),
         default=AccessMode.NONE,

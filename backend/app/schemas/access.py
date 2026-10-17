@@ -25,6 +25,8 @@ class AccessUserRead(BaseModel):
     is_admin: bool
     is_active: bool
     access_mode: AccessMode
+    view_created_tasks: bool
+    view_watched_tasks: bool
     access_tags: list[AccessTagRead]
     created_at: datetime
     updated_at: datetime
@@ -33,3 +35,5 @@ class AccessUserRead(BaseModel):
 class AccessUserUpdate(BaseModel):
     access_mode: AccessMode
     tag_ids: list[int] = Field(default_factory=list, max_length=100)
+    view_created_tasks: bool | None = None
+    view_watched_tasks: bool | None = None

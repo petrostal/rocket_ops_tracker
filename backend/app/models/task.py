@@ -39,6 +39,14 @@ task_tags = Table(
     Column("tag_id", Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
 )
 
+task_watchers = Table(
+    "task_watchers",
+    Base.metadata,
+    Column("task_id", Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Index("ix_task_watchers_user_id", "user_id"),
+)
+
 
 class Task(Base):
     __tablename__ = "tasks"
@@ -95,6 +103,7 @@ class Task(Base):
         order_by="TaskAttachment.created_at.desc()",
     )
     tags: Mapped[list[Tag]] = relationship(secondary=task_tags, order_by="Tag.name")
+    watchers: Mapped[list[User]] = relationship(secondary=task_watchers, order_by="User.display_name, User.id")
 
 
 class Tag(Base):

@@ -18,7 +18,7 @@ const columns: { status: TaskStatus; label: string }[] = [
 const activeStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'WAITING', 'REVIEW'];
 const donePageSize = 10;
 
-export function KanbanPage({ users, tags, userId, onCreate, onOpen }: { users: User[]; tags: Tag[]; userId: number; onCreate: () => void; onOpen: (task: TaskSummary) => void }) {
+export function KanbanPage({ users, tags, userId, isAdmin = false, onCreate, onOpen }: { users: User[]; tags: Tag[]; userId: number; isAdmin?: boolean; onCreate: () => void; onOpen: (task: TaskSummary) => void }) {
   const [filters, setFilters] = useStoredState(`filters:kanban:${userId}`, emptyFilters, parseFilterState);
   const deferredSearch = useDeferredValue(filters.search);
   const baseParams = useMemo(() => {
@@ -71,16 +71,16 @@ export function KanbanPage({ users, tags, userId, onCreate, onOpen }: { users: U
       <PageHeader title="Канбан" subtitle="Операционные задачи команды" onCreate={onCreate} />
       <Filters value={filters} users={users} tags={tags} onChange={setFilters} compact />
       {(active.error || done.error || moveError) && <div className="inline-error">{active.error || done.error || moveError}</div>}
-      {(active.loading || done.loading) ? <Loading /> : <DndContext sensors={sensors} onDragEnd={(event) => void move(event)}><div className="kanban-board">{columns.map((column) => <KanbanColumn key={column.status} {...column} tasks={items.filter((task) => task.status === column.status)} total={column.status === 'DONE' ? done.total : undefined} loadingMore={column.status === 'DONE' && done.loadingMore} onLoadMore={column.status === 'DONE' ? done.loadMore : undefined} onOpen={onOpen} onCreate={onCreate} />)}</div></DndContext>}
+      {(active.loading || done.loading) ? <Loading /> : <DndContext sensors={sensors} onDragEnd={(event) => void move(event)}><div className="kanban-board">{columns.map((column) => <KanbanColumn key={column.status} {...column} tasks={items.filter((task) => task.status === column.status)} total={column.status === 'DONE' ? done.total : undefined} loadingMore={column.status === 'DONE' && done.loadingMore} onLoadMore={column.status === 'DONE' ? done.loadMore : undefined} canMove={(task) => isAdmin || (task.status !== 'DONE' && (task.assignee?.id === userId || (!task.assignee && task.creator.id === userId)))} onOpen={onOpen} onCreate={onCreate} />)}</div></DndContext>}
     </div>
   );
 }
 
-function KanbanColumn({ status, label, tasks, total, loadingMore = false, onLoadMore, onOpen, onCreate }: { status: TaskStatus; label: string; tasks: TaskSummary[]; total?: number; loadingMore?: boolean; onLoadMore?: () => void; onOpen: (task: TaskSummary) => void; onCreate: () => void }) {
+function KanbanColumn({ status, label, tasks, total, loadingMore = false, onLoadMore, canMove, onOpen, onCreate }: { status: TaskStatus; label: string; tasks: TaskSummary[]; total?: number; loadingMore?: boolean; onLoadMore?: () => void; canMove: (task: TaskSummary) => boolean; onOpen: (task: TaskSummary) => void; onCreate: () => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const taskTotal = total ?? tasks.length;
   const hasMore = tasks.length < taskTotal;
-  return <section ref={setNodeRef} className={`kanban-column status-${status.toLowerCase()} ${isOver ? 'is-over' : ''}`}><header><div><i className="status-square" /><h2>{label}</h2><span>{taskTotal}</span></div><button className="icon-button" aria-label="Меню колонки"><MoreVertical size={18} /></button></header><div className="column-tasks">{tasks.map((task) => <TaskCard key={task.id} task={task} onOpen={onOpen} />)}{tasks.length === 0 && <div className="column-empty">Перетащите задачу сюда</div>}</div>{onLoadMore && hasMore ? <button className="show-more-tasks" disabled={loadingMore} onClick={onLoadMore}>{loadingMore ? 'Загрузка…' : 'Показать ещё'}</button> : null}<button className="add-column-task" onClick={onCreate}><Plus size={16} />Добавить задачу</button></section>;
+  return <section ref={setNodeRef} className={`kanban-column status-${status.toLowerCase()} ${isOver ? 'is-over' : ''}`}><header><div><i className="status-square" /><h2>{label}</h2><span>{taskTotal}</span></div><button className="icon-button" aria-label="Меню колонки"><MoreVertical size={18} /></button></header><div className="column-tasks">{tasks.map((task) => <TaskCard key={task.id} task={task} onOpen={onOpen} draggable={canMove(task)} />)}{tasks.length === 0 && <div className="column-empty">Перетащите задачу сюда</div>}</div>{onLoadMore && hasMore ? <button className="show-more-tasks" disabled={loadingMore} onClick={onLoadMore}>{loadingMore ? 'Загрузка…' : 'Показать ещё'}</button> : null}<button className="add-column-task" onClick={onCreate}><Plus size={16} />Добавить задачу</button></section>;
 }
 
 function Loading() { return <div className="loading-grid">{[1,2,3,4,5].map((i) => <div key={i}><span /><span /><span /></div>)}</div>; }

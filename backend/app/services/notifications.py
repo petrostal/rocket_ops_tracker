@@ -7,6 +7,7 @@ from app.config import Settings
 from app.integrations.rocketchat.client import RocketChatClient, RocketChatError
 from app.models.task import Task, TaskStatus
 from app.models.user import User
+from app.services.access import can_view_task
 
 logger = logging.getLogger(__name__)
 
@@ -63,22 +64,27 @@ def notify_status(task: Task, actor: User, old_status: TaskStatus, settings: Set
     if old_status == task.status:
         return
 
-    if settings.notify_creator_updates and task.creator:
-        _post_direct(
-            task,
-            task.creator,
-            f"🔄 В задаче #{task.id} изменён статус пользователем {_escape_markdown('@' + actor.username)}\n"
-            f"{STATUS_LABELS[old_status]} → **{STATUS_LABELS[task.status]}**\n"
-            f"[{_escape_markdown(task.title)}]({_task_url(task, settings)})",
-            settings,
-        )
+    notified = set()
+    if settings.notify_creator_updates:
+        participants = {watcher.id: watcher for watcher in task.watchers if watcher.id != actor.id}
+        if task.creator:
+            participants[task.creator.id] = task.creator
+        for recipient in participants.values():
+            _post_direct(
+                task, recipient,
+                f"🔄 В задаче #{task.id} изменён статус пользователем {_escape_markdown('@' + actor.username)}\n"
+                f"{STATUS_LABELS[old_status]} → **{STATUS_LABELS[task.status]}**\n"
+                f"[{_escape_markdown(task.title)}]({_task_url(task, settings)})",
+                settings,
+            )
+            notified.add(recipient.id)
 
     enabled = task.status == TaskStatus.DONE and settings.notify_task_completed
     enabled = enabled or task.status == TaskStatus.IN_PROGRESS and settings.notify_task_started
     if (
         not enabled
         or not task.assignee
-        or task.assignee_id == task.creator_id
+        or task.assignee_id in notified
     ):
         return
     icon = "✅" if task.status == TaskStatus.DONE else "▶"
@@ -105,11 +111,24 @@ def notify_comment(task: Task, actor: User, body: str, settings: Settings) -> No
     )
     recipients = {
         participant.id: participant
-        for participant in (task.creator, task.assignee)
+        for participant in (task.creator, task.assignee, *task.watchers)
         if participant is not None and participant.id != actor.id
     }
     for recipient in recipients.values():
         _post_direct(task, recipient, text, settings)
+
+
+def notify_watchers_added(task: Task, actor: User, previous_ids: set[int], settings: Settings) -> None:
+    if not settings.notify_creator_updates:
+        return
+    for watcher in task.watchers:
+        if watcher.id not in previous_ids and watcher.id != actor.id:
+            _post_direct(
+                task, watcher,
+                f"👁 Вы добавлены наблюдателем задачи #{task.id} пользователем {_escape_markdown('@' + actor.username)}\n"
+                f"[{_escape_markdown(task.title)}]({_task_url(task, settings)})",
+                settings,
+            )
 
 
 def notify_overdue(task: Task, settings: Settings) -> bool:
@@ -126,6 +145,8 @@ def notify_overdue(task: Task, settings: Settings) -> bool:
 
 
 def _post_direct(task: Task, recipient: User, text: str, settings: Settings) -> bool:
+    if not can_view_task(recipient, task):
+        return False
     try:
         RocketChatClient(settings).post_message(f"@{recipient.username}", text)
         return True
