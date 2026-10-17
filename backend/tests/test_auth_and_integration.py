@@ -136,6 +136,7 @@ def test_oauth_callback_returns_to_original_task(client, users, monkeypatch, des
 
 @pytest.mark.parametrize("destination", [
     "https://other.invalid/tasks/70", "//other.invalid/tasks/70", "/\\other.invalid/tasks/70",
+    "///tasks/70", "////tasks/70",
     "/tasks/70/../../api/auth/logout", "/tasks/not-a-task", "/kanban/other", "/api/auth/logout",
     "/tasks/70\r\nLocation: https://other.invalid", "/tasks/70\t", "/%2f%2fother.invalid/tasks/70",
 ])

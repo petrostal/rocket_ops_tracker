@@ -33,7 +33,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 def _safe_destination(value: str) -> str:
     allowed = ("/kanban", "/my", "/tasks", "/create", "/access")
-    if not value.startswith("/") or "\\" in value or any(ord(char) < 32 or ord(char) == 127 for char in value):
+    if not value.startswith("/") or value.startswith("//") or "\\" in value or any(ord(char) < 32 or ord(char) == 127 for char in value):
         return "/kanban"
     try:
         destination = urlsplit(value)
